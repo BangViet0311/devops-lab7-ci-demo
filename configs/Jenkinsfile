@@ -5,6 +5,10 @@ pipeline {
         maven 'M3'
     }
 
+    triggers {
+        pollSCM('H/5 * * * *')
+    }
+
     options {
         skipDefaultCheckout(true)
         disableConcurrentBuilds()
@@ -51,7 +55,7 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 dir(env.APP_DIR) {
-                    withSonarQubeEnv('SonarQube', credentialsId: 'sonarqube-token') {
+                    withSonarQubeEnv(installationName: 'SonarQube', credentialsId: 'sonarqube-token') {
                         sh '''
                             set +x
                             mvn -B -ntp sonar:sonar \
