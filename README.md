@@ -2,6 +2,21 @@
 
 Repository: https://github.com/BangViet0311/devops-lab7-ci-demo
 
+## Ket qua da kiem tra
+
+- Jenkins build **#2**: **SUCCESS**, 6/6 tests pass.
+- URL: http://localhost:8080/job/DevOps-Lab7-CI-Pipeline/2/
+- Revision source: `d607e657f864431666aa5cc83a5cf8bb4c095f7e`.
+- Jenkins da archive `ci-demo-1.0.0-SNAPSHOT.jar`.
+- Nexus da luu `ci-demo-1.0.0-20261119.024438-1.jar` trong `maven-snapshots`.
+- SonarQube project `devops-lab7` da phan tich, dashboard hien Quality Gate Passed.
+- Anh 01 den 08 co trong `screenshots/`. Anh Console Output la anh toan trang.
+- Build #1 loi 401 vi credential Nexus; da cap nhat credential va chay lai
+  thanh cong o build #2. Giu nguyen lich su build de doi chieu.
+
+SonarQube 9.9.8 hien canh bao het ho tro va dung embedded database: chi dung
+cho lab local. Khong dua stack nay ra Internet/production voi cau hinh hien tai.
+
 ## Cau truc
 
 ```text
