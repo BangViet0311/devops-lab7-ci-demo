@@ -1,0 +1,112 @@
+pipeline {
+    agent any
+
+    tools {
+        maven 'M3'
+    }
+
+    options {
+        skipDefaultCheckout(true)
+        disableConcurrentBuilds()
+        timeout(time: 30, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+    }
+
+    environment {
+        APP_DIR = 'configs/sample-java-app'
+        NEXUS_URL = 'http://lab7-nexus:8081'
+        NEXUS_REPO = 'maven-snapshots'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build') {
+            steps {
+                dir(env.APP_DIR) {
+                    sh 'mvn -B -ntp clean compile'
+                }
+            }
+        }
+
+        stage('Test') {
+            steps {
+                dir(env.APP_DIR) {
+                    sh 'mvn -B -ntp test'
+                }
+            }
+            post {
+                always {
+                    dir(env.APP_DIR) {
+                        junit testResults: 'target/surefire-reports/*.xml', allowEmptyResults: false
+                    }
+                }
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                dir(env.APP_DIR) {
+                    withSonarQubeEnv('SonarQube', credentialsId: 'sonarqube-token') {
+                        sh '''
+                            set +x
+                            mvn -B -ntp sonar:sonar \
+                                -Dsonar.projectKey=devops-lab7 \
+                                -Dsonar.projectName="DevOps Lab 7 CI Demo" \
+                                -Dsonar.token="$SONAR_AUTH_TOKEN"
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Package and Archive') {
+            steps {
+                dir(env.APP_DIR) {
+                    sh 'mvn -B -ntp package -DskipTests'
+                    archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+                }
+            }
+        }
+
+        stage('Publish to Nexus') {
+            steps {
+                dir(env.APP_DIR) {
+                    withCredentials([usernamePassword(
+                        credentialsId: 'nexus-credentials',
+                        usernameVariable: 'NEXUS_USERNAME',
+                        passwordVariable: 'NEXUS_PASSWORD'
+                    )]) {
+                        configFileProvider([configFile(
+                            fileId: 'maven-settings-nexus',
+                            variable: 'MAVEN_SETTINGS'
+                        )]) {
+                            sh '''
+                                set +x
+                                mvn -B -ntp org.apache.maven.plugins:maven-deploy-plugin:3.1.4:deploy-file \
+                                    -s "$MAVEN_SETTINGS" \
+                                    -DpomFile=pom.xml \
+                                    -Dfile=target/ci-demo-1.0.0-SNAPSHOT.jar \
+                                    -Durl="$NEXUS_URL/repository/$NEXUS_REPO/" \
+                                    -DrepositoryId=nexus
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "SUCCESS: artifact published to ${NEXUS_URL}/repository/${NEXUS_REPO}/"
+        }
+        failure {
+            echo 'FAILED: inspect Console Output and Test Result for the failed stage.'
+        }
+    }
+}
